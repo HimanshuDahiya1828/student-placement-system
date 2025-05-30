@@ -1,0 +1,224 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <fstream>
+#include <algorithm>
+using namespace std;
+
+class Student {
+private:
+    string name;
+    string rollNumber;
+    float cgpa;
+    int backlogs;
+    vector<string> skills;
+
+    static string toLower(const string& str) {
+        string lowerStr = str;
+        transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
+        return lowerStr;
+    }
+
+public:
+    void inputData() {
+        int skillCount;
+
+        cout << "Please enter the student's full name: ";
+        getline(cin >> ws, name);
+
+        cout << "Enter the student's roll number: ";
+        getline(cin, rollNumber);
+
+        cout << "Enter the student's CGPA (e.g., 8.5): ";
+        cin >> cgpa;
+
+        do {
+            cout << "Enter the number of backlogs (0 if none): ";
+            cin >> backlogs;
+            if (backlogs < 0) {
+                cout << "Backlogs can’t be negative. Please enter 0 or a positive number.\n";
+            }
+        } while (backlogs < 0);
+
+        cout << "How many skills have you mastered or feel confident in? ";
+        cin >> skillCount;
+        cin.ignore();
+
+        skills.clear();
+        for (int i = 0; i < skillCount; i++) {
+            cout << "Skill " << (i + 1) << ": ";
+            string skill;
+            getline(cin, skill);
+            skills.push_back(skill);
+        }
+
+        cout << "\nThank you! Student information recorded successfully.\n\n";
+    }
+
+    void displayData() const {
+        cout << "----- Student Details -----\n";
+        cout << "Name       : " << name << endl;
+        cout << "Roll Number: " << rollNumber << endl;
+        cout << "CGPA       : " << cgpa << endl;
+        cout << "Backlogs   : " << backlogs << endl;
+        cout << "Skills     : ";
+        for (const string& s : skills) {
+            cout << s << "; ";
+        }
+        cout << "\n---------------------------\n";
+    }
+
+    bool isEligible(const vector<string>& requiredSkills) const {
+        if (cgpa < 7.0 || backlogs > 0) return false;
+
+        for (const string& required : requiredSkills) {
+            string requiredLower = toLower(required);
+            for (const string& skill : skills) {
+                if (toLower(skill) == requiredLower) return true;
+            }
+        }
+        return false;
+    }
+
+    string getName() const { return name; }
+    string getRollNumber() const { return rollNumber; }
+    float getCGPA() const { return cgpa; }
+    int getBacklogs() const { return backlogs; }
+    vector<string> getSkills() const { return skills; }
+};
+
+void saveStudentsByEligibility(const vector<Student>& students, const vector<string>& requiredSkills) {
+    ofstream eligibleFile("eligible_students.txt");
+    ofstream nonEligibleFile("non_eligible_students.txt");
+
+    if (!eligibleFile || !nonEligibleFile) {
+        cout << "Error opening files.\n";
+        return;
+    }
+
+    eligibleFile << "Eligible Students\n==================\n";
+    nonEligibleFile << "Non-Eligible Students\n======================\n";
+
+    for (const Student& s : students) {
+        ostream& out = s.isEligible(requiredSkills) ? eligibleFile : nonEligibleFile;
+        out << "Name       : " << s.getName() << "\n";
+        out << "Roll Number: " << s.getRollNumber() << "\n";
+        out << "CGPA       : " << s.getCGPA() << "\n";
+        out << "Backlogs   : " << s.getBacklogs() << "\n";
+        out << "Skills     : ";
+        for (const string& skill : s.getSkills()) {
+            out << skill << "; ";
+        }
+        out << "\n---------------------------\n";
+    }
+
+    eligibleFile.close();
+    nonEligibleFile.close();
+    cout << "Students saved to respective files.\n";
+}
+
+int main() {
+    vector<Student> students;
+    vector<string> requiredSkills = {"C++", "Python", "Java", "Data Structures", "SQL", "AI"};
+
+    while (true) {
+        cout << "\n===== Placement Eligibility Checker Menu =====\n";
+        cout << "1. Add New Student\n";
+        cout << "2. Display All Students\n";
+        cout << "3. Display Eligible Students\n";
+        cout << "4. Save Students to Files\n";
+        cout << "5. Edit Student by Roll Number\n";
+        cout << "6. Delete Student by Roll Number\n";
+        cout << "7. Search Student by Roll Number\n";
+        cout << "8. Sort Students by CGPA\n";
+        cout << "9. Exit\n";
+        cout << "Choose an option (1-9): ";
+
+        int choice;
+        cin >> choice;
+        cin.ignore();
+
+        if (choice == 1) {
+            Student s;
+            s.inputData();
+            students.push_back(s);
+        } 
+        
+        else if (choice == 2) {
+            if (students.empty()) 
+            cout << "No students to display.\n";
+            else for (const Student& s : students) s.displayData();
+        } 
+        
+        
+        else if (choice == 3) {
+            bool found = false;
+            for (const Student& s : students) {
+                if (s.isEligible(requiredSkills)) {
+                    s.displayData();
+                    found = true;
+                }
+            }
+            if (!found) cout << "No eligible students found.\n";
+        } else if (choice == 4) {
+            saveStudentsByEligibility(students, requiredSkills);
+        } else if (choice == 5) {
+            string roll;
+            cout << "Enter roll number of the student to edit: ";
+            getline(cin >> ws, roll);
+
+            bool found = false;
+            for (Student& s : students) {
+                if (s.getRollNumber() == roll) {
+                    cout << "Editing student: " << s.getName() << endl;
+                    s.inputData();
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) cout << "Student not found.\n";
+        } else if (choice == 6) {
+            string roll;
+            cout << "Enter roll number of the student to delete: ";
+            getline(cin >> ws, roll);
+
+            auto it = remove_if(students.begin(), students.end(),
+                [&roll](const Student& s) { return s.getRollNumber() == roll; });
+
+            if (it != students.end()) {
+                students.erase(it, students.end());
+                cout << "Student deleted.\n";
+            } else {
+                cout << "Student not found.\n";
+            }
+        } else if (choice == 7) {
+            string roll;
+            cout << "Enter roll number to search: ";
+            getline(cin >> ws, roll);
+            bool found = false;
+            for (const Student& s : students) {
+                if (s.getRollNumber() == roll) {
+                    s.displayData();
+                    found = true;
+                    break;
+                }
+            } 
+            if (!found) cout << "Student not found.\n";
+        } else if (choice == 8) {
+            sort(students.begin(), students.end(), [](const Student& a, const Student& b) {
+                return a.getCGPA() > b.getCGPA();
+            });
+            cout << "Students sorted by CGPA in descending order.\n";
+        } else if (choice == 9) {
+            cout << "Exiting program. Goodbye!\n";
+            break;
+        } else {
+            cout << "Invalid choice. Please enter a number between 1 and 9.\n";
+        }
+    }
+
+   
+   
+   
+    return 0;
+}  
